@@ -1,0 +1,37 @@
+flowchart LR
+    user["Usuari"] --> frontend["frontend\nNginx + HTML/JS"]
+    frontend --> gateway["api-gateway\nNginx reverse proxy"]
+
+    gateway --> product["product-service\nFlask API"]
+    gateway --> order["order-service\nFlask API"]
+    gateway --> userSvc["user-service\nFlask API"]
+
+    product --> redis["cache\nRedis"]
+    product --> dbp["db-products\nMySQL 8"]
+
+    order --> dbo["db-orders\nMySQL 8"]
+    order --> product
+    order --> mq["message-queue\nRabbitMQ"]
+
+    userSvc --> dbo
+    notif["notification-service\nFlask consumer"] --> mq
+
+    subgraph public_net
+        frontend
+        gateway
+    end
+
+    subgraph service_net
+        product
+        order
+        userSvc
+        notif
+    end
+
+    subgraph data_net
+        dbp
+        dbo
+        redis
+        mq
+    end
+

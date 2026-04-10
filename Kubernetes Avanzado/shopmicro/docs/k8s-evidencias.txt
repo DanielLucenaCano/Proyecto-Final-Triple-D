@@ -1,0 +1,103 @@
+=== kubectl get pods -n shopmicro -o wide ===
+NAME                                    READY   STATUS    RESTARTS   AGE     IP            NODE       NOMINATED NODE   READINESS GATES
+api-gateway-58dcf6465-2hkkx             1/1     Running   0          3m58s   10.244.0.8    minikube   <none>           <none>
+api-gateway-58dcf6465-gdg8n             1/1     Running   0          3m58s   10.244.0.7    minikube   <none>           <none>
+cache-6d7b57f668-8q6tq                  1/1     Running   0          3m59s   10.244.0.6    minikube   <none>           <none>
+db-orders-8484fdc546-bqths              1/1     Running   0          3m59s   10.244.0.5    minikube   <none>           <none>
+db-products-6bd57c949d-mdpkv            1/1     Running   0          3m59s   10.244.0.4    minikube   <none>           <none>
+frontend-66bf874c49-ltsnx               1/1     Running   0          3m58s   10.244.0.9    minikube   <none>           <none>
+frontend-66bf874c49-n7s5z               1/1     Running   0          3m58s   10.244.0.10   minikube   <none>           <none>
+message-queue-69b4c58b57-rlslp          1/1     Running   0          3m59s   10.244.0.3    minikube   <none>           <none>
+notification-service-56c4c8cddd-5rndh   1/1     Running   0          3m57s   10.244.0.11   minikube   <none>           <none>
+order-service-5d5448d85-98hqt           1/1     Running   0          3m57s   10.244.0.12   minikube   <none>           <none>
+order-service-5d5448d85-vc85s           1/1     Running   0          3m57s   10.244.0.13   minikube   <none>           <none>
+product-service-7559548fb-gwwkb         1/1     Running   0          68s     10.244.0.18   minikube   <none>           <none>
+product-service-7559548fb-hmbnx         1/1     Running   0          3m57s   10.244.0.15   minikube   <none>           <none>
+user-service-7df8c4987b-2rqjs           1/1     Running   0          3m56s   10.244.0.16   minikube   <none>           <none>
+user-service-7df8c4987b-6x44r           1/1     Running   0          3m56s   10.244.0.17   minikube   <none>           <none>
+
+=== kubectl get services -n shopmicro ===
+NAME                   TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)              AGE
+api-gateway            NodePort    10.106.226.2     <none>        80:30081/TCP         3m58s
+cache                  ClusterIP   10.97.181.57     <none>        6379/TCP             3m59s
+db-orders              ClusterIP   10.110.4.179     <none>        3306/TCP             3m59s
+db-products            ClusterIP   10.109.197.3     <none>        3306/TCP             3m59s
+frontend               NodePort    10.104.5.16      <none>        80:30080/TCP         3m58s
+message-queue          ClusterIP   10.103.98.50     <none>        5672/TCP,15672/TCP   3m59s
+notification-service   ClusterIP   10.100.14.83     <none>        5000/TCP             3m57s
+order-service          ClusterIP   10.99.217.218    <none>        5000/TCP             3m57s
+product-service        ClusterIP   10.99.30.189     <none>        5000/TCP             3m57s
+user-service           ClusterIP   10.109.227.105   <none>        5000/TCP             3m56s
+
+=== kubectl describe deployment product-service -n shopmicro ===
+Name:                   product-service
+Namespace:              shopmicro
+CreationTimestamp:      Tue, 07 Apr 2026 11:54:14 +0200
+Labels:                 <none>
+Annotations:            deployment.kubernetes.io/revision: 1
+Selector:               app=product-service
+Replicas:               2 desired | 2 updated | 2 total | 2 available | 0 unavailable
+StrategyType:           RollingUpdate
+MinReadySeconds:        0
+RollingUpdateStrategy:  25% max unavailable, 25% max surge
+Pod Template:
+  Labels:  app=product-service
+  Containers:
+   product-service:
+    Image:      shopmicro/product-service:1.1.0
+    Port:       5000/TCP
+    Host Port:  0/TCP
+    Liveness:   http-get http://:5000/health delay=15s timeout=1s period=15s #success=1 #failure=3
+    Readiness:  http-get http://:5000/health delay=8s timeout=1s period=10s #success=1 #failure=3
+    Environment Variables from:
+      product-service-config  ConfigMap  Optional: false
+      product-service-secret  Secret     Optional: false
+    Environment:              <none>
+    Mounts:                   <none>
+  Volumes:                    <none>
+  Node-Selectors:             <none>
+  Tolerations:                <none>
+Conditions:
+  Type           Status  Reason
+  ----           ------  ------
+  Progressing    True    NewReplicaSetAvailable
+  Available      True    MinimumReplicasAvailable
+OldReplicaSets:  <none>
+NewReplicaSet:   product-service-7559548fb (2/2 replicas created)
+Events:
+  Type    Reason             Age    From                   Message
+  ----    ------             ----   ----                   -------
+  Normal  ScalingReplicaSet  3m57s  deployment-controller  Scaled up replica set product-service-7559548fb to 2
+
+=== Self-healing summary ===
+Deleted pod product-service-7559548fb-6259g and Kubernetes recreated product-service-7559548fb-gwwkb automatically.
+
+=== API verification ===
+{
+    "items":  [
+                  {
+                      "description":  "Teclat gaming amb retroil·luminació RGB",
+                      "id":  1,
+                      "name":  "Teclat mecànic",
+                      "price":  79.99,
+                      "stock":  12
+                  },
+                  {
+                      "description":  "Pantalla IPS QHD per a productivitat",
+                      "id":  2,
+                      "name":  "Monitor 27 polzades",
+                      "price":  229.0,
+                      "stock":  7
+                  },
+                  {
+                      "description":  "Ratolí ergonòmic amb bateria recarregable",
+                      "id":  3,
+                      "name":  "Ratolí sense fils",
+                      "price":  39.5,
+                      "stock":  18
+                  }
+              ],
+    "service":  "product-service",
+    "source":  "cache",
+    "version":  "1.1.0"
+}
