@@ -37,7 +37,27 @@ docker node ls
 ## Escalado en caliente
 
 ```bash
-docker service scale shopmicro_product-service=4
+docker service scale shopmicro_product-service=4 shopmicro_order-service=3
 docker service ps shopmicro_product-service
+docker service ps shopmicro_order-service
+docker stack ps shopmicro
+docker stack services shopmicro
 ```
 
+## Evidencias recomendadas para el ejercicio 1
+
+```bash
+docker node ls
+docker stack services shopmicro
+docker service scale shopmicro_product-service=4 shopmicro_order-service=3
+docker service ps shopmicro_product-service
+docker service ps shopmicro_order-service
+docker stack ps shopmicro
+```
+
+Puntos a capturar:
+
+- estado inicial del stack antes del escalado;
+- escalado en caliente de `product-service` y `order-service`;
+- distribución final de réplicas entre manager y workers;
+- confirmación de que el stack sigue operativo sin redeploy completo.
