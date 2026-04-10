@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ShopMicro</title>
+  <link rel="stylesheet" href="/assets/styles.css">
+</head>
+<body>
+  <main class="layout">
+    <section class="hero">
+      <p class="eyebrow">ShopMicro e-Commerce</p>
+      <h1>Catàleg de productes amb microserveis</h1>
+      <p class="lead">Frontend estàtic servit amb Nginx i peticions cap a l'API Gateway.</p>
+      <button id="reload-products">Recarrega productes</button>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <h2>Productes</h2>
+        <span id="product-source" class="badge">sense dades</span>
+      </div>
+      <div id="products" class="product-grid"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Crear comanda</h2>
+      <form id="order-form">
+        <label>
+          Producte
+          <select name="product_id" id="product-select" required></select>
+        </label>
+        <label>
+          Quantitat
+          <input type="number" name="quantity" value="1" min="1" required>
+        </label>
+        <label>
+          ID usuari generat automàticament
+          <input type="number" name="user_id" id="generated-user-id" readonly>
+        </label>
+        <button type="submit">Comprar</button>
+      </form>
+      <pre id="order-result">Encara no hi ha comandes creades.</pre>
+    </section>
+  </main>
+
+  <script src="/assets/app.js"></script>
+</body>
+</html>
