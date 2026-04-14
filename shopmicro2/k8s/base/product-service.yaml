@@ -1,0 +1,116 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: product-service-secret
+  namespace: shopmicro
+type: Opaque
+stringData:
+  DB_PASSWORD: products_pass123
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: product-service-config
+  namespace: shopmicro
+data:
+  APP_VERSION: "2.0.0"
+  REDIS_TTL: "60"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: product-service
+  namespace: shopmicro
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: product-service
+  template:
+    metadata:
+      labels:
+        app: product-service
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - product-service
+              topologyKey: kubernetes.io/hostname
+      containers:
+        - name: product-service
+          image: shopmicro/product-service:2.0.0
+          ports:
+            - containerPort: 5000
+              name: http
+          env:
+            - name: DB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: shopmicro-config
+                  key: DB_PRODUCTS_HOST
+            - name: DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: shopmicro-config
+                  key: DB_PRODUCTS_NAME
+            - name: DB_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: shopmicro-config
+                  key: DB_PRODUCTS_USER
+            - name: REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: shopmicro-config
+                  key: REDIS_HOST
+            - name: REDIS_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: shopmicro-config
+                  key: REDIS_PORT
+          envFrom:
+            - configMapRef:
+                name: product-service-config
+            - secretRef:
+                name: product-service-secret
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 5000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 2
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: product-service
+  namespace: shopmicro
+  labels:
+    app: product-service
+spec:
+  selector:
+    app: product-service
+  ports:
+    - name: http
+      port: 5000
+      targetPort: 5000

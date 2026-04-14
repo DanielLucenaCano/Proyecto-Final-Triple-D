@@ -1,0 +1,134 @@
+{{- if .Values.hpa.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: product-service
+  namespace: {{ include "shopmicro.namespace" . }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: product-service
+  minReplicas: {{ .Values.hpa.minReplicas }}
+  maxReplicas: {{ .Values.hpa.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.hpa.targetCPU }}
+{{- end }}
+{{- if .Values.ingress.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: shopmicro-ingress
+  namespace: {{ include "shopmicro.namespace" . }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  rules:
+    - host: {{ .Values.ingress.host }}
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: api-gateway
+                port:
+                  number: 80
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 80
+{{- end }}
+{{- if .Values.monitoring.enabled }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: shopmicro-services
+  namespace: {{ include "shopmicro.namespace" . }}
+  labels:
+    release: {{ .Values.monitoring.releaseLabel }}
+spec:
+  selector:
+    matchExpressions:
+      - key: app
+        operator: In
+        values:
+          - product-service
+          - order-service
+          - user-service
+          - notification-service
+  namespaceSelector:
+    matchNames:
+      - {{ include "shopmicro.namespace" . }}
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: shopmicro-alerts
+  namespace: {{ include "shopmicro.namespace" . }}
+  labels:
+    release: {{ .Values.monitoring.releaseLabel }}
+spec:
+  groups:
+    - name: shopmicro.rules
+      rules:
+        - alert: ProductServiceHighMemoryUsage
+          expr: |
+            (
+              container_memory_working_set_bytes{namespace="{{ include "shopmicro.namespace" . }}", pod=~"product-service-.*", container="product-service"}
+              /
+              kube_pod_container_resource_limits{namespace="{{ include "shopmicro.namespace" . }}", pod=~"product-service-.*", container="product-service", resource="memory", unit="byte"}
+            ) > 0.8
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: Product service above 80% memory limit
+            description: Product service pods are consuming more than 80% of their configured memory limit.
+{{- end }}
+{{- if .Values.istio.enabled }}
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: product-service-vs
+  namespace: {{ include "shopmicro.namespace" . }}
+spec:
+  hosts:
+    - product-service
+  http:
+    - timeout: 3s
+      retries:
+        attempts: 3
+        perTryTimeout: 1s
+        retryOn: 5xx
+      route:
+        - destination:
+            host: product-service
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: order-service-dr
+  namespace: {{ include "shopmicro.namespace" . }}
+spec:
+  host: order-service
+  trafficPolicy:
+    outlierDetection:
+      consecutive5xxErrors: 5
+      interval: 30s
+      baseEjectionTime: 30s
+{{- end }}

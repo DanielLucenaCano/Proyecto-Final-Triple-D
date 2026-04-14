@@ -1,0 +1,164 @@
+sharedConfig:
+  redisHost: cache
+  redisPort: "6379"
+  rabbitmqHost: message-queue
+  rabbitmqUser: shopmicro
+  dbProductsHost: db-products-headless
+  dbProductsName: products_db
+  dbProductsUser: products_user
+  dbOrdersHost: db-orders-headless
+  dbOrdersName: orders_db
+  dbOrdersUser: orders_user
+  productServiceUrl: http://product-service:5000
+
+frontend:
+  replicas: 2
+  image:
+    repository: shopmicro/frontend
+    tag: "1.0.0"
+  resources:
+    requests:
+      cpu: 50m
+      memory: 32Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+apiGateway:
+  replicas: 2
+  image:
+    repository: shopmicro/api-gateway
+    tag: "1.0.0"
+  resources:
+    requests:
+      cpu: 50m
+      memory: 32Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+productService:
+  replicas: 3
+  image:
+    repository: shopmicro/product-service
+    tag: "2.0.0"
+  appVersion: "2.0.0"
+  redisTtl: "60"
+  dbPassword: products_pass123
+  resources:
+    requests:
+      cpu: 100m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+orderService:
+  replicas: 3
+  image:
+    repository: shopmicro/order-service
+    tag: "1.1.0"
+  appVersion: "1.1.0"
+  dbPassword: orders_pass123
+  rabbitmqPassword: shopmicro-pass
+  resources:
+    requests:
+      cpu: 100m
+      memory: 96Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+userService:
+  replicas: 3
+  image:
+    repository: shopmicro/user-service
+    tag: "1.1.0"
+  appVersion: "1.1.0"
+  dbPassword: orders_pass123
+  jwtSecret: change-me-in-real-env
+  resources:
+    requests:
+      cpu: 75m
+      memory: 64Mi
+    limits:
+      cpu: 300m
+      memory: 192Mi
+
+notificationService:
+  replicas: 1
+  image:
+    repository: shopmicro/notification-service
+    tag: "1.1.0"
+  appVersion: "1.1.0"
+  rabbitmqPassword: shopmicro-pass
+  resources:
+    requests:
+      cpu: 75m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 192Mi
+
+dbProducts:
+  rootPassword: rootpass123
+  password: products_pass123
+  storage: 2Gi
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+dbOrders:
+  rootPassword: rootpass123
+  password: orders_pass123
+  storage: 2Gi
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+cache:
+  storage: 1Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
+messageQueue:
+  password: shopmicro-pass
+  storage: 2Gi
+  resources:
+    requests:
+      cpu: 150m
+      memory: 192Mi
+    limits:
+      cpu: 500m
+      memory: 384Mi
+
+hpa:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 8
+  targetCPU: 50
+
+ingress:
+  enabled: true
+  className: nginx
+  host: shopmicro.local
+
+monitoring:
+  enabled: true
+  releaseLabel: monitoring
+
+istio:
+  enabled: true

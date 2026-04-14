@@ -1,0 +1,121 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: order-service-secret
+  namespace: shopmicro
+type: Opaque
+stringData:
+  DB_PASSWORD: orders_pass123
+  RABBITMQ_PASSWORD: shopmicro-pass
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: order-service-config
+  namespace: shopmicro
+data:
+  APP_VERSION: "1.1.0"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-service
+  namespace: shopmicro
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: order-service
+  template:
+    metadata:
+      labels:
+        app: order-service
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - order-service
+              topologyKey: kubernetes.io/hostname
+      containers:
+        - name: order-service
+          image: shopmicro/order-service:1.1.0
+          ports:
+            - containerPort: 5000
+              name: http
+          env:
+            - name: DB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: shopmicro-config
+                  key: DB_ORDERS_HOST
+            - name: DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: shopmicro-config
+                  key: DB_ORDERS_NAME
+            - name: DB_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: shopmicro-config
+                  key: DB_ORDERS_USER
+            - name: PRODUCT_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: shopmicro-config
+                  key: PRODUCT_SERVICE_URL
+            - name: RABBITMQ_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: shopmicro-config
+                  key: RABBITMQ_HOST
+            - name: RABBITMQ_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: shopmicro-config
+                  key: RABBITMQ_USER
+          envFrom:
+            - configMapRef:
+                name: order-service-config
+            - secretRef:
+                name: order-service-secret
+          resources:
+            requests:
+              cpu: 100m
+              memory: 96Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 5000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 2
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-service
+  namespace: shopmicro
+  labels:
+    app: order-service
+spec:
+  selector:
+    app: order-service
+  ports:
+    - name: http
+      port: 5000
+      targetPort: 5000

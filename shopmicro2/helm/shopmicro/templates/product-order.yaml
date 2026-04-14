@@ -1,0 +1,228 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: product-service-secret
+  namespace: {{ include "shopmicro.namespace" . }}
+type: Opaque
+stringData:
+  DB_PASSWORD: {{ .Values.productService.dbPassword | quote }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: product-service-config
+  namespace: {{ include "shopmicro.namespace" . }}
+data:
+  APP_VERSION: {{ .Values.productService.appVersion | quote }}
+  REDIS_TTL: {{ .Values.productService.redisTtl | quote }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: product-service
+  namespace: {{ include "shopmicro.namespace" . }}
+spec:
+  replicas: {{ .Values.productService.replicas }}
+  selector:
+    matchLabels:
+      app: product-service
+  template:
+    metadata:
+      labels:
+        app: product-service
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - product-service
+              topologyKey: kubernetes.io/hostname
+      containers:
+        - name: product-service
+          image: {{ .Values.productService.image.repository }}:{{ .Values.productService.image.tag }}
+          ports:
+            - containerPort: 5000
+              name: http
+          env:
+            - name: DB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: shopmicro-config
+                  key: DB_PRODUCTS_HOST
+            - name: DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: shopmicro-config
+                  key: DB_PRODUCTS_NAME
+            - name: DB_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: shopmicro-config
+                  key: DB_PRODUCTS_USER
+            - name: REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: shopmicro-config
+                  key: REDIS_HOST
+            - name: REDIS_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: shopmicro-config
+                  key: REDIS_PORT
+          envFrom:
+            - configMapRef:
+                name: product-service-config
+            - secretRef:
+                name: product-service-secret
+          resources:
+{{ toYaml .Values.productService.resources | indent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 5000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 2
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: product-service
+  namespace: {{ include "shopmicro.namespace" . }}
+  labels:
+    app: product-service
+spec:
+  selector:
+    app: product-service
+  ports:
+    - name: http
+      port: 5000
+      targetPort: 5000
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: order-service-secret
+  namespace: {{ include "shopmicro.namespace" . }}
+type: Opaque
+stringData:
+  DB_PASSWORD: {{ .Values.orderService.dbPassword | quote }}
+  RABBITMQ_PASSWORD: {{ .Values.orderService.rabbitmqPassword | quote }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: order-service-config
+  namespace: {{ include "shopmicro.namespace" . }}
+data:
+  APP_VERSION: {{ .Values.orderService.appVersion | quote }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-service
+  namespace: {{ include "shopmicro.namespace" . }}
+spec:
+  replicas: {{ .Values.orderService.replicas }}
+  selector:
+    matchLabels:
+      app: order-service
+  template:
+    metadata:
+      labels:
+        app: order-service
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - order-service
+              topologyKey: kubernetes.io/hostname
+      containers:
+        - name: order-service
+          image: {{ .Values.orderService.image.repository }}:{{ .Values.orderService.image.tag }}
+          ports:
+            - containerPort: 5000
+              name: http
+          env:
+            - name: DB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: shopmicro-config
+                  key: DB_ORDERS_HOST
+            - name: DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: shopmicro-config
+                  key: DB_ORDERS_NAME
+            - name: DB_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: shopmicro-config
+                  key: DB_ORDERS_USER
+            - name: PRODUCT_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: shopmicro-config
+                  key: PRODUCT_SERVICE_URL
+            - name: RABBITMQ_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: shopmicro-config
+                  key: RABBITMQ_HOST
+            - name: RABBITMQ_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: shopmicro-config
+                  key: RABBITMQ_USER
+          envFrom:
+            - configMapRef:
+                name: order-service-config
+            - secretRef:
+                name: order-service-secret
+          resources:
+{{ toYaml .Values.orderService.resources | indent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 5000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 2
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-service
+  namespace: {{ include "shopmicro.namespace" . }}
+  labels:
+    app: order-service
+spec:
+  selector:
+    app: order-service
+  ports:
+    - name: http
+      port: 5000
+      targetPort: 5000

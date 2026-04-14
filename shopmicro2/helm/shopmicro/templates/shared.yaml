@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shopmicro-config
+  namespace: {{ include "shopmicro.namespace" . }}
+data:
+  REDIS_HOST: {{ .Values.sharedConfig.redisHost | quote }}
+  REDIS_PORT: {{ .Values.sharedConfig.redisPort | quote }}
+  RABBITMQ_HOST: {{ .Values.sharedConfig.rabbitmqHost | quote }}
+  RABBITMQ_USER: {{ .Values.sharedConfig.rabbitmqUser | quote }}
+  DB_PRODUCTS_HOST: {{ .Values.sharedConfig.dbProductsHost | quote }}
+  DB_PRODUCTS_NAME: {{ .Values.sharedConfig.dbProductsName | quote }}
+  DB_PRODUCTS_USER: {{ .Values.sharedConfig.dbProductsUser | quote }}
+  DB_ORDERS_HOST: {{ .Values.sharedConfig.dbOrdersHost | quote }}
+  DB_ORDERS_NAME: {{ .Values.sharedConfig.dbOrdersName | quote }}
+  DB_ORDERS_USER: {{ .Values.sharedConfig.dbOrdersUser | quote }}
+  PRODUCT_SERVICE_URL: {{ .Values.sharedConfig.productServiceUrl | quote }}

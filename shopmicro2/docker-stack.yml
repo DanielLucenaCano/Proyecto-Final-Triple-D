@@ -1,0 +1,317 @@
+version: "3.9"
+
+services:
+  frontend:
+    image: shopmicro/frontend:1.0.0
+    ports:
+      - target: 80
+        published: 8080
+        protocol: tcp
+        mode: ingress
+    networks:
+      - public-net
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure
+      update_config:
+        parallelism: 1
+        delay: 5s
+        order: start-first
+
+  api-gateway:
+    image: shopmicro/api-gateway:1.0.0
+    ports:
+      - target: 80
+        published: 8081
+        protocol: tcp
+        mode: ingress
+    networks:
+      - public-net
+      - service-net
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure
+      update_config:
+        parallelism: 1
+        delay: 5s
+        order: start-first
+
+  product-service:
+    image: shopmicro/product-service:2.0.0
+    environment:
+      APP_VERSION: 2.0.0
+      DB_HOST: db-products
+      DB_NAME: products_db
+      DB_USER: products_user
+      DB_PASSWORD_FILE: /run/secrets/products_db_password
+      REDIS_HOST: cache
+      REDIS_PORT: 6379
+      REDIS_TTL: 60
+    secrets:
+      - products_db_password
+    networks:
+      - service-net
+      - data-net
+    deploy:
+      replicas: 4
+      restart_policy:
+        condition: on-failure
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+        failure_action: rollback
+        monitor: 30s
+      rollback_config:
+        parallelism: 2
+        delay: 5s
+
+  order-service:
+    image: shopmicro/order-service:1.1.0
+    environment:
+      APP_VERSION: 1.1.0
+      DB_HOST: db-orders
+      DB_NAME: orders_db
+      DB_USER: orders_user
+      DB_PASSWORD_FILE: /run/secrets/orders_db_password
+      PRODUCT_SERVICE_URL: http://product-service:5000
+      RABBITMQ_HOST: message-queue
+      RABBITMQ_USER: shopmicro
+      RABBITMQ_PASSWORD_FILE: /run/secrets/rabbitmq_password
+    secrets:
+      - orders_db_password
+      - rabbitmq_password
+    networks:
+      - service-net
+      - data-net
+    deploy:
+      replicas: 3
+      restart_policy:
+        condition: on-failure
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+
+  user-service:
+    image: shopmicro/user-service:1.1.0
+    environment:
+      APP_VERSION: 1.1.0
+      DB_HOST: db-orders
+      DB_NAME: orders_db
+      DB_USER: orders_user
+      DB_PASSWORD_FILE: /run/secrets/orders_db_password
+      JWT_SECRET_FILE: /run/secrets/jwt_secret
+    secrets:
+      - orders_db_password
+      - jwt_secret
+    networks:
+      - service-net
+      - data-net
+    deploy:
+      replicas: 3
+      restart_policy:
+        condition: on-failure
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+
+  notification-service:
+    image: shopmicro/notification-service:1.1.0
+    environment:
+      APP_VERSION: 1.1.0
+      RABBITMQ_HOST: message-queue
+      RABBITMQ_USER: shopmicro
+      RABBITMQ_PASSWORD_FILE: /run/secrets/rabbitmq_password
+    secrets:
+      - rabbitmq_password
+    networks:
+      - data-net
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+
+  db-products:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/db_root_password
+      MYSQL_DATABASE: products_db
+      MYSQL_USER: products_user
+      MYSQL_PASSWORD_FILE: /run/secrets/products_db_password
+    secrets:
+      - db_root_password
+      - products_db_password
+    volumes:
+      - db_products_data:/var/lib/mysql
+    configs:
+      - source: products_init_sql
+        target: /docker-entrypoint-initdb.d/01-schema.sql
+    networks:
+      - data-net
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+      update_config:
+        parallelism: 1
+
+  db-orders:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/db_root_password
+      MYSQL_DATABASE: orders_db
+      MYSQL_USER: orders_user
+      MYSQL_PASSWORD_FILE: /run/secrets/orders_db_password
+    secrets:
+      - db_root_password
+      - orders_db_password
+    volumes:
+      - db_orders_data:/var/lib/mysql
+    configs:
+      - source: orders_init_sql
+        target: /docker-entrypoint-initdb.d/01-schema.sql
+    networks:
+      - data-net
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+      update_config:
+        parallelism: 1
+
+  cache:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    networks:
+      - data-net
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+      update_config:
+        parallelism: 1
+
+  message-queue:
+    image: rabbitmq:3-management
+    environment:
+      RABBITMQ_DEFAULT_USER: shopmicro
+      RABBITMQ_DEFAULT_PASS_FILE: /run/secrets/rabbitmq_password
+    secrets:
+      - rabbitmq_password
+    ports:
+      - target: 15672
+        published: 15672
+        protocol: tcp
+        mode: ingress
+      - target: 5672
+        published: 5672
+        protocol: tcp
+        mode: ingress
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - data-net
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+      update_config:
+        parallelism: 1
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+    networks:
+      - monitoring-net
+    deploy:
+      mode: global
+      restart_policy:
+        condition: on-failure
+
+  prometheus:
+    image: prom/prometheus:v2.51.2
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+    configs:
+      - source: prometheus_config
+        target: /etc/prometheus/prometheus.yml
+    ports:
+      - target: 9090
+        published: 9090
+        protocol: tcp
+        mode: ingress
+    volumes:
+      - prometheus_data:/prometheus
+    networks:
+      - monitoring-net
+      - service-net
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+
+networks:
+  public-net:
+    driver: overlay
+    attachable: true
+  service-net:
+    driver: overlay
+    attachable: true
+  data-net:
+    driver: overlay
+    attachable: true
+  monitoring-net:
+    driver: overlay
+    attachable: true
+
+volumes:
+  db_products_data:
+  db_orders_data:
+  rabbitmq_data:
+  prometheus_data:
+
+secrets:
+  db_root_password:
+    file: ./secrets/db_root_password.txt
+  products_db_password:
+    file: ./secrets/products_db_password.txt
+  orders_db_password:
+    file: ./secrets/orders_db_password.txt
+  rabbitmq_password:
+    file: ./secrets/rabbitmq_password.txt
+  jwt_secret:
+    file: ./secrets/jwt_secret.txt
+
+configs:
+  products_init_sql:
+    file: ./db/products-init/01-schema.sql
+  orders_init_sql:
+    file: ./db/orders-init/01-schema.sql
+  prometheus_config:
+    file: ./monitoring/prometheus-swarm.yml

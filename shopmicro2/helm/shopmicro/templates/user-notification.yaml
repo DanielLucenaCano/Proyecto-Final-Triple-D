@@ -1,0 +1,187 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: user-service-secret
+  namespace: {{ include "shopmicro.namespace" . }}
+type: Opaque
+stringData:
+  DB_PASSWORD: {{ .Values.userService.dbPassword | quote }}
+  JWT_SECRET: {{ .Values.userService.jwtSecret | quote }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: user-service-config
+  namespace: {{ include "shopmicro.namespace" . }}
+data:
+  APP_VERSION: {{ .Values.userService.appVersion | quote }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-service
+  namespace: {{ include "shopmicro.namespace" . }}
+spec:
+  replicas: {{ .Values.userService.replicas }}
+  selector:
+    matchLabels:
+      app: user-service
+  template:
+    metadata:
+      labels:
+        app: user-service
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - user-service
+              topologyKey: kubernetes.io/hostname
+      containers:
+        - name: user-service
+          image: {{ .Values.userService.image.repository }}:{{ .Values.userService.image.tag }}
+          ports:
+            - containerPort: 5000
+              name: http
+          env:
+            - name: DB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: shopmicro-config
+                  key: DB_ORDERS_HOST
+            - name: DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: shopmicro-config
+                  key: DB_ORDERS_NAME
+            - name: DB_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: shopmicro-config
+                  key: DB_ORDERS_USER
+          envFrom:
+            - configMapRef:
+                name: user-service-config
+            - secretRef:
+                name: user-service-secret
+          resources:
+{{ toYaml .Values.userService.resources | indent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 5000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 2
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-service
+  namespace: {{ include "shopmicro.namespace" . }}
+  labels:
+    app: user-service
+spec:
+  selector:
+    app: user-service
+  ports:
+    - name: http
+      port: 5000
+      targetPort: 5000
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: notification-service-secret
+  namespace: {{ include "shopmicro.namespace" . }}
+type: Opaque
+stringData:
+  RABBITMQ_PASSWORD: {{ .Values.notificationService.rabbitmqPassword | quote }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: notification-service-config
+  namespace: {{ include "shopmicro.namespace" . }}
+data:
+  APP_VERSION: {{ .Values.notificationService.appVersion | quote }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-service
+  namespace: {{ include "shopmicro.namespace" . }}
+spec:
+  replicas: {{ .Values.notificationService.replicas }}
+  selector:
+    matchLabels:
+      app: notification-service
+  template:
+    metadata:
+      labels:
+        app: notification-service
+    spec:
+      containers:
+        - name: notification-service
+          image: {{ .Values.notificationService.image.repository }}:{{ .Values.notificationService.image.tag }}
+          ports:
+            - containerPort: 5000
+              name: http
+          env:
+            - name: RABBITMQ_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: shopmicro-config
+                  key: RABBITMQ_HOST
+            - name: RABBITMQ_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: shopmicro-config
+                  key: RABBITMQ_USER
+          envFrom:
+            - configMapRef:
+                name: notification-service-config
+            - secretRef:
+                name: notification-service-secret
+          resources:
+{{ toYaml .Values.notificationService.resources | indent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 5000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 2
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification-service
+  namespace: {{ include "shopmicro.namespace" . }}
+  labels:
+    app: notification-service
+spec:
+  selector:
+    app: notification-service
+  ports:
+    - name: http
+      port: 5000
+      targetPort: 5000

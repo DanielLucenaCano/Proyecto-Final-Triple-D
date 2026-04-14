@@ -1,0 +1,6 @@
+apiVersion: v2
+name: shopmicro
+description: Plataforma e-Commerce de microservicios ShopMicro
+type: application
+version: 1.0.0
+appVersion: "2.0.0"

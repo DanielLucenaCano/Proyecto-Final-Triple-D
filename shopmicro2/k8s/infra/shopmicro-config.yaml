@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shopmicro-config
+  namespace: shopmicro
+data:
+  REDIS_HOST: cache
+  REDIS_PORT: "6379"
+  RABBITMQ_HOST: message-queue
+  RABBITMQ_USER: shopmicro
+  DB_PRODUCTS_HOST: db-products-headless
+  DB_PRODUCTS_NAME: products_db
+  DB_PRODUCTS_USER: products_user
+  DB_ORDERS_HOST: db-orders-headless
+  DB_ORDERS_NAME: orders_db
+  DB_ORDERS_USER: orders_user
+  PRODUCT_SERVICE_URL: http://product-service:5000

@@ -1,0 +1,106 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: user-service-secret
+  namespace: shopmicro
+type: Opaque
+stringData:
+  DB_PASSWORD: orders_pass123
+  JWT_SECRET: change-me-in-real-env
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: user-service-config
+  namespace: shopmicro
+data:
+  APP_VERSION: "1.1.0"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-service
+  namespace: shopmicro
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: user-service
+  template:
+    metadata:
+      labels:
+        app: user-service
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - user-service
+              topologyKey: kubernetes.io/hostname
+      containers:
+        - name: user-service
+          image: shopmicro/user-service:1.1.0
+          ports:
+            - containerPort: 5000
+              name: http
+          env:
+            - name: DB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: shopmicro-config
+                  key: DB_ORDERS_HOST
+            - name: DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: shopmicro-config
+                  key: DB_ORDERS_NAME
+            - name: DB_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: shopmicro-config
+                  key: DB_ORDERS_USER
+          envFrom:
+            - configMapRef:
+                name: user-service-config
+            - secretRef:
+                name: user-service-secret
+          resources:
+            requests:
+              cpu: 75m
+              memory: 64Mi
+            limits:
+              cpu: 300m
+              memory: 192Mi
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 5000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 2
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-service
+  namespace: shopmicro
+  labels:
+    app: user-service
+spec:
+  selector:
+    app: user-service
+  ports:
+    - name: http
+      port: 5000
+      targetPort: 5000

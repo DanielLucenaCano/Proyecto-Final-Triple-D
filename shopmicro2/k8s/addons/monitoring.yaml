@@ -1,0 +1,49 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: shopmicro-services
+  namespace: shopmicro
+  labels:
+    release: monitoring
+spec:
+  selector:
+    matchExpressions:
+      - key: app
+        operator: In
+        values:
+          - product-service
+          - order-service
+          - user-service
+          - notification-service
+  namespaceSelector:
+    matchNames:
+      - shopmicro
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: shopmicro-alerts
+  namespace: shopmicro
+  labels:
+    release: monitoring
+spec:
+  groups:
+    - name: shopmicro.rules
+      rules:
+        - alert: ProductServiceHighMemoryUsage
+          expr: |
+            (
+              container_memory_working_set_bytes{namespace="shopmicro", pod=~"product-service-.*", container="product-service"}
+              /
+              kube_pod_container_resource_limits{namespace="shopmicro", pod=~"product-service-.*", container="product-service", resource="memory", unit="byte"}
+            ) > 0.8
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: Product service above 80% memory limit
+            description: Product service pods are consuming more than 80% of their configured memory limit.
