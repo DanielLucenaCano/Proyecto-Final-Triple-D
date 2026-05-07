@@ -266,11 +266,11 @@ Trabajo pendiente:
 - documentación del proceso de actualización de imagen
 - comparación final más extensa entre Swarm y Kubernetes
 
-## 15. Prueba de self-healing en Kubernetes
+## 14. Prueba de self-healing en Kubernetes
 
 Para cerrar el apartado de Kubernetes se realizó una prueba adicional de recuperación automática, equivalente al mecanismo de self-healing propio de Kubernetes.
 
-### 15.1. Estado previo
+### 14.1. Estado previo
 
 Antes de la prueba, el deployment `product-service` tenía dos réplicas activas y disponibles.
 
@@ -280,7 +280,7 @@ Comprobación usada:
 kubectl get pods -n shopmicro -l app=product-service -o wide
 ```
 
-### 15.2. Eliminación manual de un pod
+### 14.2. Eliminación manual de un pod
 
 Se eliminó manualmente una réplica del deployment:
 
@@ -288,7 +288,7 @@ Se eliminó manualmente una réplica del deployment:
 kubectl delete pod product-service-7559548fb-6259g -n shopmicro
 ```
 
-### 15.3. Recuperación automática
+### 14.3. Recuperación automática
 
 Tras la eliminación, Kubernetes lanzó automáticamente un nuevo pod para mantener el número deseado de réplicas:
 
@@ -303,7 +303,7 @@ Resultado observado:
 - se creó automáticamente un nuevo pod `product-service-7559548fb-gwwkb`
 - el deployment volvió a quedar con 2/2 réplicas en estado `Running`
 
-### 15.4. Verificación funcional posterior
+### 14.4. Verificación funcional posterior
 
 Se volvió a comprobar la API:
 
@@ -316,15 +316,15 @@ Resultado:
 - la API siguió respondiendo correctamente
 - `product-service` continuó mostrando `version: 1.1.0`
 
-### 15.5. Conclusión de la prueba
+### 14.5. Conclusión de la prueba
 
 La prueba confirma el mecanismo de self-healing de Kubernetes: cuando una réplica desaparece, el controlador del deployment crea automáticamente otra para restaurar el estado deseado sin intervención manual adicional.
 
-## 14. Rolling update de `product-service`
+## 15. Rolling update de `product-service`
 
 Como siguiente ejercicio de Kubernetes se realizó una actualización real de la imagen de `product-service`, pasando de la versión `1.0.0` a la `1.1.0`.
 
-### 14.1. Preparación de la nueva versión
+### 15.1. Preparación de la nueva versión
 
 Se modificó el servicio para que expusiera la versión por API en:
 
@@ -336,14 +336,14 @@ Además, se actualizó el manifiesto [k8s/base/product-service.yaml](/C:/Users/G
 - imagen `shopmicro/product-service:1.1.0`
 - variable `APP_VERSION: "1.1.0"`
 
-### 14.2. Construcción y carga de la nueva imagen
+### 15.2. Construcción y carga de la nueva imagen
 
 ```powershell
 docker build -t shopmicro/product-service:1.1.0 C:\Users\G513\OneDrive - Sa Palomera\Documentos\Codex\shopmicro\product-service
 & 'C:\Program Files\Kubernetes\Minikube\minikube.exe' image load shopmicro/product-service:1.1.0
 ```
 
-### 14.3. Estado previo del deployment
+### 15.3. Estado previo del deployment
 
 Antes del cambio, el deployment usaba:
 
@@ -357,7 +357,7 @@ Resultado:
 shopmicro/product-service:1.0.0
 ```
 
-### 14.4. Ejecución del rolling update
+### 15.4. Ejecución del rolling update
 
 El cambio de imagen se ejecutó con:
 
@@ -374,7 +374,7 @@ Resultado observado:
 - el `rollout status` finalizó correctamente
 - el historial del deployment pasó a `REVISION 2`
 
-### 14.5. Sincronización del ConfigMap y reinicio controlado
+### 15.5. Sincronización del ConfigMap y reinicio controlado
 
 Para alinear la configuración declarativa con la nueva versión, se aplicó después el manifiesto actualizado y se reinició el deployment:
 
@@ -384,7 +384,7 @@ kubectl rollout restart deployment/product-service -n shopmicro
 kubectl rollout status deployment/product-service -n shopmicro --timeout=300s
 ```
 
-### 14.6. Verificación posterior
+### 15.6. Verificación posterior
 
 Se comprobó la nueva versión mediante la API:
 
@@ -404,7 +404,7 @@ Resultado observado:
 
 También se comprobó que el catálogo seguía operativo y que el stock se mantenía correctamente tras la actualización.
 
-### 14.7. Conclusión del ejercicio
+### 15.7. Conclusión del ejercicio
 
 El rolling update se realizó con éxito. Kubernetes reemplazó las réplicas antiguas de `product-service` por las nuevas sin dejar el servicio indisponible, lo que demuestra el funcionamiento práctico del mecanismo de actualización progresiva exigido en la fase 4.
 
