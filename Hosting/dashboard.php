@@ -21,14 +21,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['crear_servidor'])) {
         'backup' => isset($_POST['backup']) ? 1 : 0,
         'firewall' => isset($_POST['firewall']) ? 1 : 0,
         'panel_control' => isset($_POST['panel_control']) ? 1 : 0,
+        'wordpress_instalado' => isset($_POST['wordpress_instalado']) ? 1 : 0,
     ];
 
     $precio = calcularPrecio($datos);
 
-    $stmt = $mysqli->prepare('INSERT INTO servers (user_id, nombre, vcpu, ram, ssd, hdd, bandwidth, windows_server, ip_estatica, backup, firewall, panel_control, precio_base, precio_total, estado) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    $stmt = $mysqli->prepare('INSERT INTO servers (user_id, nombre, vcpu, ram, ssd, hdd, bandwidth, windows_server, ip_estatica, backup, firewall, panel_control, wordpress_instalado, precio_base, precio_total, estado) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
     $estado = 'detenido';
     $stmt->bind_param(
-        'isiiiiiiiiiiids',
+        'isiiiiiiiiiiidds',
         $_SESSION['usuario_id'],
         $nombreServidor,
         $datos['vcpu'],
@@ -41,6 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['crear_servidor'])) {
         $datos['backup'],
         $datos['firewall'],
         $datos['panel_control'],
+        $datos['wordpress_instalado'],
         $precio['base'],
         $precio['total'],
         $estado
@@ -122,6 +124,7 @@ $servidores = $stmt->get_result();
             <label><input type="checkbox" name="backup"> Backup (+20% base)</label>
             <label><input type="checkbox" name="firewall"> Firewall (+2€)</label>
             <label><input type="checkbox" name="panel_control"> Panel de control (+12€)</label>
+            <label><input type="checkbox" name="wordpress_instalado"> WordPress preinstalado (gratis)</label>
         </div>
 
         <p id="precio_estimado">Precio estimado: <strong>0.00€</strong></p>
@@ -147,7 +150,8 @@ $servidores = $stmt->get_result();
                     <?php echo (int)$srv['vcpu']; ?> vCPU,
                     <?php echo (int)$srv['ram']; ?>GB RAM,
                     <?php echo (int)$srv['ssd']; ?>GB SSD,
-                    <?php echo (int)$srv['hdd']; ?>GB HDD
+                    <?php echo (int)$srv['hdd']; ?>GB HDD<br>
+                    <strong>WordPress:</strong> <?php echo (int)$srv['wordpress_instalado'] === 1 ? 'Preinstalado' : 'No instalado'; ?>
                 </td>
                 <td><?php echo number_format((float)$srv['precio_total'], 2); ?>€</td>
                 <td>
