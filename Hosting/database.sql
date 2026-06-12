@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS servers (
     backup TINYINT(1) DEFAULT 0,
     firewall TINYINT(1) DEFAULT 0,
     panel_control TINYINT(1) DEFAULT 0,
+    wordpress_instalado TINYINT(1) NOT NULL DEFAULT 0,
     precio_base DECIMAL(10,2) NOT NULL,
     precio_total DECIMAL(10,2) NOT NULL,
     estado ENUM('activo', 'detenido') DEFAULT 'detenido',
