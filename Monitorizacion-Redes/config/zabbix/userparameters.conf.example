@@ -1,0 +1,25 @@
+# Declaración de chequeos personalizados (UserParameters) para
+# zabbix-agent2, ver scripts/checks/README.md para el procedimiento de
+# integración completo (montaje de volúmenes, alta de items y triggers).
+#
+# Cómo activarlo:
+#   cp config/zabbix/userparameters.conf.example config/zabbix/userparameters.conf
+#   # añade los volúmenes correspondientes al servicio zabbix-agent en
+#   # docker-compose.yml (ver scripts/checks/README.md, paso 1)
+#   docker compose up -d zabbix-agent
+#
+# Sintaxis: UserParameter=<clave>[*],<comando>
+#   $1, $2, $3... son los parámetros que se pasan desde la clave del item
+#   definida en Zabbix, p. ej. lab.tcp.check[zabbix-web,8080,2]
+#                                              ^$1       ^$2  ^$3
+
+# --- Disponibilidad de servicios TCP (scripts/checks/check_tcp_port.sh) -----
+# Devuelve "status=up;latency_ms=N" o "status=down;latency_ms=-1".
+# Ejemplo de uso desde Zabbix: lab.tcp.check[zabbix-web,8080,2]
+UserParameter=lab.tcp.check[*],sh /etc/zabbix/scripts/check_tcp_port.sh $1 $2 $3
+
+# --- Errores recientes en logs de aplicación (scripts/checks/check_log_errors.sh) ---
+# Devuelve un entero: nº de líneas que matchean el patrón en la ventana dada.
+# Ejemplo de uso desde Zabbix:
+#   lab.log.errors[/var/log/zabbix/zabbix_server.log,ERROR|CRITICAL,300]
+UserParameter=lab.log.errors[*],sh /etc/zabbix/scripts/check_log_errors.sh $1 "$2" $3

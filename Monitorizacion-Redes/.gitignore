@@ -1,0 +1,15 @@
+# Variables con credenciales reales (generadas a partir de .env.example)
+.env
+
+# Configuración activa de UserParameters (generada a partir de
+# config/zabbix/userparameters.conf.example; puede variar por despliegue)
+config/zabbix/userparameters.conf
+
+# Evidencias pesadas (capturas, logs) — versiona solo lo relevante a mano
+docs/evidencias/*.png
+docs/evidencias/*.jpg
+docs/evidencias/*.log
+
+# Misceláneo habitual
+.DS_Store
+*.swp

@@ -1,0 +1,64 @@
+# Plantilla de partida para el laboratorio (formato de exportación YAML de Zabbix 7.4)
+#
+# No es una plantilla oficial de Zabbix: es un PUNTO DE PARTIDA mínimo que
+# extiende la plantilla estándar "Linux by Zabbix agent" con triggers de
+# umbral acordes al alcance descrito en docs/politicas-monitorizacion.md
+# (CPU, memoria, disco, disponibilidad). Los valores de umbral son
+# provisionales — deben revisarse y ajustarse en la fase de integración con
+# datos reales antes de darla por definitiva.
+#
+# Cómo importarla:
+#   Data collection -> Templates -> Import -> selecciona este fichero
+#   (cambia antes la extensión a .yaml si tu instancia lo requiere)
+#
+# Requisito: vincúlala a un host que ya tenga vinculada la plantilla
+# "Linux by Zabbix agent" (de ahí toma los items base de CPU/memoria/disco).
+
+zabbix_export:
+  version: '7.4'
+  template_groups:
+    - uuid: 9e6fd0f0a1e9476eaf2272d016c1a0a1
+      name: 'Laboratorio Monitorizacion-Redes'
+  templates:
+    - uuid: 4b0a6a6a6c6e4f6f9f6c8b9a0d1e2f3a
+      template: 'Laboratorio - Umbrales Base'
+      name: 'Laboratorio - Umbrales Base'
+      description: |
+        Triggers de umbral para CPU, memoria y disco sobre los items
+        provistos por la plantilla "Linux by Zabbix agent".
+        Severidades y valores definidos en docs/politicas-monitorizacion.md.
+        Estado: PROVISIONAL — pendiente de validación con datos reales
+        (ver docs/validacion-pruebas.md).
+      groups:
+        - name: 'Laboratorio Monitorizacion-Redes'
+      triggers:
+        - uuid: 1a2b3c4d5e6f47890a1b2c3d4e5f6071
+          expression: 'min(/Linux by Zabbix agent/system.cpu.load[percpu,avg1],5m)>1.5'
+          name: 'CPU load alto en {HOST.NAME} (warning)'
+          priority: WARNING
+          description: 'Carga media de CPU sostenida por encima de 1.5 durante 5 minutos.'
+        - uuid: 2b3c4d5e6f4789a01b2c3d4e5f607182
+          expression: 'min(/Linux by Zabbix agent/system.cpu.load[percpu,avg1],5m)>3'
+          name: 'CPU load critico en {HOST.NAME} (critical)'
+          priority: HIGH
+          description: 'Carga media de CPU sostenida por encima de 3 durante 5 minutos.'
+        - uuid: 3c4d5e6f47890a1b2c3d4e5f60718293
+          expression: 'min(/Linux by Zabbix agent/vm.memory.size[pavailable],5m)<20'
+          name: 'Memoria disponible baja en {HOST.NAME} (warning)'
+          priority: WARNING
+          description: 'Menos del 20% de memoria disponible durante 5 minutos.'
+        - uuid: 4d5e6f47890a1b2c3d4e5f6071829304
+          expression: 'min(/Linux by Zabbix agent/vm.memory.size[pavailable],5m)<10'
+          name: 'Memoria disponible critica en {HOST.NAME} (critical)'
+          priority: HIGH
+          description: 'Menos del 10% de memoria disponible durante 5 minutos.'
+        - uuid: 5e6f47890a1b2c3d4e5f607182930415
+          expression: 'last(/Linux by Zabbix agent/vfs.fs.size[/,pfree])<20'
+          name: 'Espacio en disco bajo en {HOST.NAME}:/ (warning)'
+          priority: WARNING
+          description: 'Menos del 20% de espacio libre en la particion raiz.'
+        - uuid: 6f47890a1b2c3d4e5f60718293041526
+          expression: 'last(/Linux by Zabbix agent/vfs.fs.size[/,pfree])<10'
+          name: 'Espacio en disco critico en {HOST.NAME}:/ (critical)'
+          priority: HIGH
+          description: 'Menos del 10% de espacio libre en la particion raiz.'
